@@ -1,0 +1,38 @@
+# SO-101 (Workshop v1.0 sim) — metric realization of the Show-Harness action units.
+# Measured by scripts/sim/probe_axes.py on 2026-10-03 (Lerobot-So101-Teleop-Vials-To-Rack-DR, seed 0).
+# Do not edit by hand: re-run the probe and copy the numbers.
+
+frame: task   # world orientation, origin at the robot base. +X robot->vials/rack, +Y toward the rack side, +Z up.
+
+# Same contract as Show-Harness atomic_tokenizer.MOVE_DIRS (real-Franka convention).
+move_vectors:
+  MV_FWD:   [ 1.0,  0.0,  0.0]
+  MV_BACK:  [-1.0,  0.0,  0.0]
+  MV_LEFT:  [ 0.0, -1.0,  0.0]
+  MV_RIGHT: [ 0.0,  1.0,  0.0]
+  MV_UP:    [ 0.0,  0.0,  1.0]
+  MV_DOWN:  [ 0.0,  0.0, -1.0]
+
+step_m: 0.02
+measured:
+  travel_mm: {min: 19.96, mean: 20.17, max: 20.72}   # 3 reps x 6 tokens, AtomicExec closed loop
+  off_axis_max_mm: 0.93
+  ctrl_steps_per_token: {MV_FWD: 5.3, MV_BACK: 5.0, MV_LEFT: 1.7, MV_RIGHT: 3.7, MV_UP: 4.0, MV_DOWN: 5.0}
+  hold_drift_mm_30ctrl: 0.60
+  # Direction of one token in the RAW external_D455 image (640x480, u right / v down),
+  # from projecting the TCP with the camera intrinsics. Note LEFT and UP both read as
+  # "image up" in this view: the wrist view is what separates them.
+  external_image_direction:
+    MV_FWD: left
+    MV_BACK: right
+    MV_LEFT: up
+    MV_RIGHT: down
+    MV_UP: up
+    MV_DOWN: down
+
+gripper:
+  joint: Jaw
+  open_rad: 0.9
+  close_rad: -0.17            # lower soft limit; on an object the jaw stalls (stiffness 4)
+  empty_closed_width_m: 0.0015
+  open_width_m: 0.081

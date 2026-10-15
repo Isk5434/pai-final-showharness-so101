@@ -1,0 +1,45 @@
+# ---- このリポジトリには「コードのみ」を入れる ----
+# データ・モデル・実験出力は git 管理外（HF Hub / ローカルに置く）
+data/
+models/
+outputs/
+rollouts/
+results/
+wandb/
+runs/
+saves/
+*.mp4
+*.gif
+*.png
+*.jpg
+*.jpeg
+*.npz
+*.npy
+*.h5
+*.hdf5
+*.parquet
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.usd
+*.usda
+*.usdc
+
+# secrets
+secrets.env
+*.env
+!*.env.example
+*.curlrc
+
+# Python / env
+.venv*/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Notion のエクスポート（動画の素材、git 管理外）
+docs/notion_export/

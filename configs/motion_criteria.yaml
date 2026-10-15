@@ -1,0 +1,15 @@
+# Pass criteria for scripts/sim/verify_motion.py. Set BEFORE looking at results; change only
+# with a written reason in the report.
+travel_mm: [18.0, 22.0]        # one MV_* token = 20 mm +-10 %
+off_axis_mm_max: 2.0           # sideways error of one token
+overshoot_mm_max: 2.0          # peak travel past the end point during a token
+orientation_deg_max: 1.0       # hand pitch / yaw change during a translation token
+walk_closure_mm_max: 2.0       # N random tokens then the inverse sequence
+rot_step_deg: [9.0, 11.0]      # one RT_* token = 10 deg
+rot_tcp_drift_mm_max: 3.0      # TCP excursion while rotating
+grasp_slip_mm_max: 5.0         # vial position change IN THE HAND frame while carried
+grasp_turn_deg_max: 5.0        # vial rotation change in the hand frame while carried (pivoting)
+z_floor_above_table_m: 0.008   # TCP may not go lower than this above the mat
+obstacle_margin_m: 0.03        # grid start points closer than this to the rack are skipped
+grasp_tcp_below_axis_m: 0.004  # grasp with the fingertips 4 mm below the vial axis
+hand_floor_above_table_m: 0.003  # lowest point of the gripper/jaw collision hulls above the mat
