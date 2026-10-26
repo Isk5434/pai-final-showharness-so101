@@ -3,7 +3,7 @@
 Physical AI 応用1講座 最終課題（omnicampus: isk54_34）のコード一式。人のテレオペなしで、Frontier VLM（GPT-6 Astra）が
 操作して集めたデータだけで小型 VLM・VLA を育て、SO-101 の実機まで動かした。
 
-- **動画**：https://youtu.be/uI4rw2Eg2P0— 約 3 分。映像の一部は倍速で、各クリップの右下に実時間に対する倍率を表示
+- **動画**：https://youtu.be/uI4rw2Eg2P0 — 約 3 分。映像の一部は倍速で、各クリップの右下に実時間に対する倍率を表示
   （実機は ×6〜×50。元の映像がすでに速いクリップは実時間比で表示）
 - **説明資料**：`説明資料_PAI最終課題_isk54_34.pdf`（omnicampus に提出）
 - **OSS 貢献**：このリポジトリの SO-101 対応を [showlab/Show-Harness](https://github.com/showlab/Show-Harness) に
