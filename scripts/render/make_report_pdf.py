@@ -135,8 +135,8 @@ class Doc:
 
 
 def build(doc, github, youtube):
-    doc.title("VLM が集めたデータで VLA を育てる：SO-101",
-              "Show-Harness を使い、Frontier VLM が操作して集めたデータで小型 VLM・VLA にロボットを動かさせる")
+    doc.title("Teleopless Sim2Real ～ Frontier VLM と VLA と Show-Harness ～",
+              "人のテレオペなしで、Frontier VLM が操作して集めたデータだけで小型 VLM・VLA に SO-101 を動かさせる")
 
     doc.h("1. 概要")
     doc.text("Show-Harness（showlab）は、VLM が「前へ・上へ・つかむ」といった意味のある動作単位を 1 語ずつ選び、"
@@ -149,7 +149,8 @@ def build(doc, github, youtube):
         "0.1 ManiSkill（Franka、ブロックをコースターへ）：Astra のデータで Qwen3.5-4B を SFT し、強化学習（REINFORCE / GRPO / PPO）で改善",
         "0.2 SO-101（Isaac Lab の Workshop タスク、vial を rack へ）：Show-Harness を SO-101 に対応させ、本家にマージ（OSS 貢献）。"
         "Astra のデータで VLA（DM0.5、GR00T N1.7）を学習し、同じ条件で比較",
-        "0.3 Sim to Real：SO-101 を組み立て、キャリブレーションし、実機での推論を開始（実機を使う時間が取れず、検証は途中まで）",
+        "0.3 Sim to Real：SO-101 を組み立て、実機のデータなしで Show-Harness（Astra）と DM0.5 を実機で動かした。"
+        "どちらも vial をつかんで運べたが、穴への挿入はまだできていない",
     ])
 
     doc.h("2. 目的")
@@ -165,8 +166,8 @@ def build(doc, github, youtube):
         ["シミュレータ", "ManiSkill（ZtBlockPlace-v1、Franka）、Isaac Lab（SO-101 Workshop）"],
         ["データ収集", "GPT-6 Astra（gpt-6-astra）が GUI で操作。成功エピソードのみ使用"],
         ["小型 VLM", "Qwen3.5-4B（LoRA で SFT）＋ REINFORCE / GRPO / PPO"],
-        ["VLA", "DM0.5（lerobot/dm05_base）、GR00T N1.7（Isaac-GR00T）"],
-        ["実機", "SO-101（組み立て・キャリブレーションから実施）"],
+        ["VLA", "DM0.5（Dexmal、lerobot/dm05_base）、GR00T N1.7（Isaac-GR00T）"],
+        ["実機", "SO-101（組み立てから実施）。推論は AWS、SSH トンネルで実機を制御"],
         ["その他", "Cosmos Transfer（世界モデルによる見た目の変換）、GPU は L40S 1 枚"],
     ], [300, 1074])
 
@@ -189,13 +190,19 @@ def build(doc, github, youtube):
              "Isaac Lab の Workshop 環境への接続を実装し、本家の showlab/Show-Harness に Pull Request（#6）を出して"
              "マージされました。そのうえで Astra に vial を rack に入れるタスクを操作させましたが、vial はなかなか穴に入りませんでした。"
              "VLM の動作は 1 語ずつの離散的な動きなので細かい作業が苦手だと考え、Astra の成功 50 エピソードで VLA を学習しました。")
+    doc.text("VLA には DM0.5（Dexmal）を選びました。汎用のロボット操作方策を同じ条件で比べるベンチマーク RoboDojo"
+             "（arXiv 2607.04434、robodojo-benchmark.com。sim 42 タスク・実機 18 タスク、30 方策を評価）の RoboDojo-Sim で、"
+             "2026-08-25 時点で 1 位（総合スコア 24.90、平均成功率 19.34%）でした。同じ表の π0.5 は 11.41、π0 は 3.48、GR00T N1.7 は 2.85 です"
+             "（Dexmal 公式 github.com/shideqin/opendm の表）。2026-10-06 に LeRobot が公式に対応し（huggingface.co/lerobot/dm05_base）、"
+             "そのまま LeRobot の学習・推論の仕組みに乗せられることも決め手になりました。")
+    doc.image(PARTS / "13.png", "図 1：仮説と、DM0.5 を選んだ理由（RoboDojo-Sim の総合スコア、2026-08-25 時点）")
     doc.table(["位置", "Astra の試行", "成功（sim の判定）", "成功率"], [
         ["手前", "44", "12", "27%"], ["真ん中", "45", "25", "56%"], ["一番奥", "45", "9", "20%"], ["合計", "134", "46", "34.3%"],
     ], [300, 340, 400, 334])
     doc.text("sim の判定は「どれかの vial が rack に置かれた」です。失敗 88 本のうち 79 本は動作が収束せず打ち切り。学習にはこの 46 本と、別の試行で集めた成功 4 本を使いました。", 26, color=MUTED)
     doc.text("評価は vial の位置（手前・真ん中・一番奥）ごとに 30 エピソード、合計 90 エピソードです。"
              "成功は「狙った 1 本が立って、穴に 1 cm 以上刺さった」場合だけとし、別の vial を入れた場合は取り違えとして分けて数えました。")
-    doc.image(PARTS / "13.png", "図 1：3 条件の比較（各位置 30 エピソード、同じ seed）。TE = temporal ensembling（K=5）")
+    doc.image(PARTS / "17.png", "図 2：3 条件の比較（各位置 30 エピソード、同じ seed）。TE = Temporal Ensemble（K=5）")
     doc.ul([
         "DM0.5 は、3 つの位置すべてで狙った vial を穴に入れることができました（合計 8 / 90）。",
         "temporal ensembling を足すと、何かしらの vial を入れられた数は 21 → 28 / 90 に増えましたが、増えた分はすべて取り違えで、"
@@ -205,8 +212,18 @@ def build(doc, github, youtube):
     ])
 
     doc.h3("0.3 Sim to Real")
-    doc.text("SO-101 を組み立ててキャリブレーションし、GR00T N1.7 で実機での推論を始めましたが、実機を使える時間が取れず、検証は途中までとなりました。"
-             "番外編として、世界モデル Cosmos Transfer で sim の映像を実写風に変換し、見た目の差を埋めるデータ拡張の可能性も試しました。")
+    doc.text("SO-101 を組み立ててキャリブレーションし、2 つのやり方で実機を動かしました。どちらも実機のデータは使っていません。"
+             "推論は AWS の GPU で行い、SSH トンネル越しに手元の SO-101 とカメラをつなぎました。"
+             "カメラの位置は ArUco のシートで測り、シミュレータのカメラに合わせました。")
+    doc.ul([
+        "Show-Harness（Astra）：0.2 で本家に入れた SO-101 対応をそのまま実機に接続。Astra が 1 手ずつ（1 手 約 7〜11 秒）操作し、"
+        "vial をつかんで持ち上げられたが、穴には入れられず、離した vial は机に落ちた。",
+        "DM0.5：シミュレータで Astra が集めたデモだけで学習した VLA を、そのまま実機で動かした。"
+        "vial をつかんで rack の手前まで運べたが、穴への挿入はまだできていない。",
+    ])
+    doc.text("番外編として、世界モデル Cosmos Transfer でシミュレータの映像を実写風に変換できるかを試しました。"
+             "sim だけで学んだ VLA は、実機の照明・質感・背景の違い（見た目の Sim to Real のずれ）でつまずきます。"
+             "変換した映像を学習データに足し、実機のデータなしでも実機で動く VLA を育てることが最終的な目標です。")
 
     doc.h("5. 工夫した点")
     doc.ul([
@@ -239,7 +256,8 @@ def build(doc, github, youtube):
         "お手本の数と多様さを増やす：位置ごとに十分な数の成功例をそろえ、言語の指示がきちんと効くかを確かめる。",
         "判定をそろえる：「狙った vial が穴に 1 cm 以上刺さった」という厳しい基準を、最初から使う。",
         "GR00T：temporal ensembling なし、途中のチェックポイントで評価し、学習のしすぎか、TE との相性かを切り分ける。",
-        "Sim to Real：実機の時間を確保し、キャリブレーション・照明・カメラ位置の差を詰めたうえで、Cosmos Transfer による見た目の拡張も学習に入れて検証する。",
+        "Sim to Real：つかんで運ぶところまでは実機でも動いたので、次は穴への挿入。照明・カメラ位置の差をさらに詰め、"
+        "Cosmos Transfer による見た目の拡張も学習に入れて検証する。",
     ])
 
     doc.h("8. 実用性")
@@ -249,8 +267,10 @@ def build(doc, github, youtube):
     doc.h("9. 提出物")
     doc.ul([
         f"コード：{github}",
-        f"動画：{youtube}（約 3 分。ロボットの映像の一部は 2 倍速で、動画内の右下に「×2 再生」と表示）",
-        "参考：Show-Harness（github.com/showlab/Show-Harness、arXiv 2609.10522）、LeRobot、Isaac-GR00T、ManiSkill、Isaac Lab",
+        f"動画：{youtube}（約 3 分。ロボットの映像は倍速を含み、動画内の右下に実時間に対する倍率を表示）",
+        "参考：Show-Harness（github.com/showlab/Show-Harness、arXiv 2609.10522）、"
+        "RoboDojo（robodojo-benchmark.com、arXiv 2607.04434）、DM0.5（github.com/shideqin/opendm、huggingface.co/lerobot/dm05_base）、"
+        "LeRobot、Isaac-GR00T、ManiSkill、Isaac Lab、Cosmos Transfer",
     ])
 
 

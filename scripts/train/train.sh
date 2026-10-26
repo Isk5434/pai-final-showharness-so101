@@ -8,6 +8,6 @@ set -euo pipefail
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 SH=${SHOW_HARNESS_ROOT:-/home/ubuntu/so101-showharness-deps/Show-Harness}
 CONFIG="${CONFIG:?CONFIG が必要}"
-[ -f "$CONFIG" ] || CONFIG="$REPO/$CONFIG"
+[ -f "$CONFIG" ] && CONFIG=$(realpath "$CONFIG") || CONFIG="$REPO/$CONFIG"   # 下で Show-Harness に cd するので絶対パスに
 export FLA_TILELANG="${FLA_TILELANG:-0}"
 cd "$SH" && CONFIG="$CONFIG" bash train/scripts/train.sh

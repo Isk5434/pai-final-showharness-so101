@@ -1,8 +1,10 @@
-# VLM が集めたデータで VLA を育てる：SO-101 — Show-Harness × SO-101
+# Teleopless Sim2Real ～ Frontier VLM と VLA と Show-Harness ～
 
-Physical AI 応用1講座 最終課題（omnicampus: isk54_34）のコード一式。
+Physical AI 応用1講座 最終課題（omnicampus: isk54_34）のコード一式。人のテレオペなしで、Frontier VLM（GPT-6 Astra）が
+操作して集めたデータだけで小型 VLM・VLA を育て、SO-101 の実機まで動かした。
 
-- **動画**：（YouTube の URL）— 約 3 分。ロボットの映像の一部は 2 倍速（動画内の右下に表示）
+- **動画**：（YouTube の URL）— 約 3 分。映像の一部は倍速で、各クリップの右下に実時間に対する倍率を表示
+  （実機は ×6〜×50。元の映像がすでに速いクリップは実時間比で表示）
 - **説明資料**：`説明資料_PAI最終課題_isk54_34.pdf`（omnicampus に提出）
 - **OSS 貢献**：このリポジトリの SO-101 対応を [showlab/Show-Harness](https://github.com/showlab/Show-Harness) に
   Pull Request（[#6](https://github.com/showlab/Show-Harness/pull/6)）として提出し、2026-10-10 にマージされた
@@ -10,9 +12,9 @@ Physical AI 応用1講座 最終課題（omnicampus: isk54_34）のコード一�
 | 段階 | 内容 | 主なコード |
 | --- | --- | --- |
 | データ収集 | GPT-6 Astra（gpt-6-astra）が Show-Harness の動作単位で SO-101（Isaac Lab sim）を操作 | `scripts/collect/` |
-| VLA の学習 | 成功 50 話を LeRobot 形式に変換し、DM0.5 と GR00T N1.7 を fine-tune | `scripts/train/` |
+| VLA の学習 | 成功 50 話を LeRobot 形式に変換し、DM0.5（[RoboDojo-Sim](https://robodojo-benchmark.com/) 1 位、2026-08-25 時点）と GR00T N1.7 を fine-tune | `scripts/train/` |
 | 評価 | 手前 / 真ん中 / 一番奥 × 各 30 話。狙った vial が穴に 1 cm 以上刺さったら成功 | `scripts/eval/` |
-| 実機 | SO-101 実機 backend（LeRobot） | `src/so101_showharness/real/`, `scripts/real/` |
+| 実機（Sim to Real） | 推論は AWS、SSH トンネル越しに手元の SO-101 を制御。Show-Harness（Astra）と DM0.5 を実機データなしで実行し、どちらも vial をつかんで運べた（挿入はまだ） | `scripts/real/`, `src/so101_showharness/real/`, [docs/REAL_ROBOT.md](docs/REAL_ROBOT.md) |
 | 動画・資料 | まとめ動画（PIL + ffmpeg）と説明資料の PDF | `scripts/render/` |
 
 データ・学習済み重み・評価動画はサイズの都合でリポジトリに含めていない。

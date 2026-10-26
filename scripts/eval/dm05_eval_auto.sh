@@ -7,12 +7,14 @@
 set -uo pipefail
 REPO=$(cd "$(dirname "$0")/../.." && pwd); cd "$REPO"
 TAG=${1:-dm05_success50}; N=${2:-30}; SEED=${3:-7000}
+# 学習データ（推論サーバが特徴と統計を読む）と評価する位置。学習を変えたら必ず合わせる
+DATA=${DATA:-outputs/lerobot/so101_gpt_success50}; POSITIONS=${POSITIONS:-near middle far}
 PY=/home/ubuntu/so101-showharness-deps/lerobot-dm05/.venv/bin/python
 OUT=outputs/eval_$TAG; mkdir -p "$OUT"
-until [ -f "outputs/train_$TAG/done" ]; do sleep 60; done
-CKPT=outputs/train_$TAG/run/checkpoints/last/pretrained_model
+until [ -f "${TRAIN_DONE:-outputs/train_$TAG/done}" ]; do sleep 60; done
+CKPT=${CKPT:-outputs/train_$TAG/run/checkpoints/last/pretrained_model}
 echo "[eval_auto] $(date '+%F %T') train done; ckpt=$CKPT" | tee -a "$OUT/auto.log"
-setsid nohup $PY scripts/eval/dm05_server.py --ckpt "$CKPT" --dataset outputs/lerobot/so101_gpt_success50 --port 8780 \
+setsid nohup $PY scripts/eval/dm05_server.py --ckpt "$CKPT" --dataset "$DATA" --port 8780 \
   > "$OUT/server.log" 2>&1 < /dev/null &
 SP=$!
 for i in $(seq 1 60); do grep -q "loaded" "$OUT/server.log" && break; sleep 10; done
@@ -22,7 +24,7 @@ bash scripts/sim/run_in_teleop_docker.sh scripts/eval/dm05_eval_sim.py --episode
 grep "\[dm05_eval\]" "$OUT/smoke.log" | tee -a "$OUT/auto.log" || { echo "[eval_auto] smoke failed" | tee -a "$OUT/auto.log"; kill $SP; exit 1; }
 echo "[eval_auto] $(date '+%F %T') full eval: $N per position" | tee -a "$OUT/auto.log"
 bash scripts/sim/run_in_teleop_docker.sh scripts/eval/dm05_eval_sim.py --episodes "$N" --seed0 "$SEED" \
-  --positions near middle far --out /workspace/out/eval_$TAG/full > "$OUT/full.log" 2>&1
+  --positions $POSITIONS --out /workspace/out/eval_$TAG/full > "$OUT/full.log" 2>&1
 echo "[eval_auto] $(date '+%F %T') full eval rc=$?" | tee -a "$OUT/auto.log"
 kill $SP 2>/dev/null
 echo done > "$OUT/done"

@@ -15,7 +15,8 @@ dirs=(); maps=()
 for d in "$SRC"/*/; do
   T="$(basename "$d")"
   [ -d "$d/rollout_000" ] || continue
-  TASK_TEXT="$("$PY" -c "import json,sys;print(json.load(open(sys.argv[1]))['task_text'])" "$d/rollout_000/metadata.json")"
+  if [ -f "$d/task_text.txt" ]; then TASK_TEXT="$(cat "$d/task_text.txt")"   # export_rollouts.py --list
+  else TASK_TEXT="$("$PY" -c "import json,sys;print(json.load(open(sys.argv[1]))['task_text'])" "$d/rollout_000/metadata.json")"; fi
   echo "[$T] $(find -L "$d" -maxdepth 1 -type d -name 'rollout_*' | wc -l) エピソード  指示: $TASK_TEXT"
   dirs+=("$d"); maps+=("${T}=${TASK_TEXT}")
 done

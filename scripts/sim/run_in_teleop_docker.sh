@@ -12,6 +12,9 @@ CACHE=${ISAAC_CACHE:-/home/ubuntu/sim2real/isaac-sim-cache}
 OUT_ROOT=${OUT_ROOT:-$REPO/outputs}
 IMAGE=${IMAGE:-teleop-docker:latest}
 NAME=${NAME:-so101sh_$(date +%H%M%S)}
+# 並列収集ではワーカーごとに分ける（既定は従来どおり host ネットワーク・追加の制限なし）
+NETWORK=${NETWORK:-host}
+DOCKER_EXTRA=${DOCKER_EXTRA:-}
 
 [ $# -ge 1 ] || { echo "usage: $0 <script.py> [args...]" >&2; exit 2; }
 SCRIPT=$1; shift
@@ -21,7 +24,8 @@ ARGS=""
 [ $# -gt 0 ] && ARGS=$(printf '%q ' "$@")  # no args: printf would emit one empty '' argument
 mkdir -p "$OUT_ROOT"
 
-docker run --rm --name "$NAME" --gpus all --network=host \
+# shellcheck disable=SC2086
+docker run --rm --name "$NAME" --gpus all --network="$NETWORK" $DOCKER_EXTRA \
   -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
   -e PYTHONPATH=/workspace/so101-showharness/src:/workspace/Show-Harness \
   -v "$WORKSHOP/docker/env:/root/env" \

@@ -6,6 +6,8 @@
 
 POST /act   {"reset": bool, "task": str, "state": [6], "front_png_b64": ..., "wrist_png_b64": ...}
          -> {"action": [6], "infer_s": float}
+POST /chunk 同じ入力 -> {"actions": [[6] x n], "infer_s": float}（実機用：1 回の往復で n_action_steps 手をまとめて返す。
+         クラウド越しの往復を毎ステップ払わないため。--blend / --ensemble は効かない。画像は PNG でも JPEG でもよい）
 読み込みと前後処理は lerobot-eval と同じ道筋（make_policy + make_pre_post_processors）。行動チャンクは
 policy.select_action が内部のキューで n_action_steps ずつ出すので、sim は制御ステップ（30 Hz）ごとに 1 回呼ぶ。
 
@@ -44,6 +46,7 @@ def main():
     ap.add_argument("--ckpt", required=True)
     ap.add_argument("--dataset", required=True, help="学習に使った LeRobot データの root（特徴と統計）")
     ap.add_argument("--port", type=int, default=8780)
+    ap.add_argument("--host", default="0.0.0.0", help="実機用は 127.0.0.1（SSH トンネル経由だけで届く）")
     ap.add_argument("--blend", type=int, default=0, help="チャンク継ぎ目のクロスフェード長（ステップ）。0 で無効")
     ap.add_argument("--ensemble", type=int, default=0, help="temporal ensemble の予測間隔（ステップ）。0 で無効")
     ap.add_argument("--ens_m", type=float, default=0.01, help="temporal ensemble の重み exp(-m·i) の m（ACT 既定 0.01）")
@@ -59,7 +62,7 @@ def main():
     if args.blend and args.ensemble:
         raise SystemExit("--blend と --ensemble は同時に使えない")
     print(f"[dm05_server] loaded {args.ckpt} (use_peft={cfg.use_peft}, blend={args.blend}, "
-          f"ensemble={args.ensemble}, m={args.ens_m}) on :{args.port}", flush=True)
+          f"ensemble={args.ensemble}, m={args.ens_m}, n_action_steps={cfg.n_action_steps}) on {args.host}:{args.port}", flush=True)
     ens = {"t": 0, "preds": {}}  # preds: 時刻 -> その時刻を指す予測のリスト（古い順）
 
     def ensembled(batch) -> np.ndarray:
@@ -104,6 +107,16 @@ def main():
                 "observation.images.wrist": img(req["wrist_png_b64"]),
                 "task": [req["task"]],
             }
+            if self.path == "/chunk":
+                with torch.inference_mode():
+                    acts = [a.tolist() for a in chunk(batch)[: cfg.n_action_steps]]
+                body = json.dumps({"actions": acts, "infer_s": round(time.time() - t0, 3)}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
             with torch.inference_mode():
                 if args.ensemble > 0:
                     out = ensembled(batch).tolist()
@@ -118,7 +131,7 @@ def main():
             self.end_headers()
             self.wfile.write(body)
 
-    HTTPServer(("0.0.0.0", args.port), H).serve_forever()
+    HTTPServer((args.host, args.port), H).serve_forever()
 
 
 if __name__ == "__main__":

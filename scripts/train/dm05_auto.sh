@@ -12,7 +12,8 @@ PY=/home/ubuntu/so101-showharness-deps/lerobot-dm05/.venv/bin
 LOG=outputs/train_$TAG; mkdir -p "$LOG"
 echo "[dm05_auto] $(date '+%F %T') start" | tee -a "$LOG/auto.log"
 
-until [ -f "$DATA/meta/info.json" ] && grep -q "kept .*skipped" outputs/to_lerobot50.log 2>/dev/null; do sleep 30; done
+CONV_LOG=${CONV_LOG:-outputs/to_lerobot50.log}
+until [ -f "$DATA/meta/info.json" ] && grep -q "kept .*skipped" "$CONV_LOG" 2>/dev/null; do sleep 30; done
 echo "[dm05_auto] $(date '+%F %T') dataset ready: $(python3 -c "import json;d=json.load(open('$DATA/meta/info.json'));print(d['total_episodes'],'eps',d['total_frames'],'frames')")" | tee -a "$LOG/auto.log"
 
 common=(--dataset.repo_id=local/so101_gpt_success --dataset.root="$DATA" --dataset.video_backend=pyav

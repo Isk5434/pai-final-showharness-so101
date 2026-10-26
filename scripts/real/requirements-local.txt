@@ -1,0 +1,17 @@
+# 実機を挿すローカル PC 用の軽い環境（推論はしないので torch は入れない。合計 約 300MB）。
+# lerobot は Workshop の real-robot イメージと同じ 0.4.1 を依存なしで入れ、腕の制御に要るものだけ足す
+# （robot_io.lerobot_lite() が torch などの import を肩代わりする）。2 行で入れる:
+#   uv pip install --python .venv --no-deps lerobot==0.4.1
+#   uv pip install --python .venv -r scripts/real/requirements-local.txt
+feetech-servo-sdk>=1.0.0,<2.0.0
+pyserial>=3.5,<4.0
+draccus==0.10.0
+deepdiff>=7.0.1,<9.0.0
+termcolor>=2.4.0,<4.0.0
+packaging>=24.2,<26.0
+tqdm
+numpy<2.3
+opencv-python>=4.9,<4.13
+pillow
+pyyaml
+huggingface-hub>=0.34.2,<0.36.0

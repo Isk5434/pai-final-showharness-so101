@@ -19,6 +19,10 @@
 
 ホストで gpt_operator_server.py を先に起動しておくこと。
 
+--vlm_server を付けると、GPT の代わりに FT 済み VLM（scripts/eval/policy_server.py）が1手を決める（Astra を
+蒸留した VLM を、デモを集めたときと同じ開始姿勢・実行部・拒否・判定で評価する）。入力は学習データと同じ
+Show-Harness v5 の文面と prepared_pair 済みの2画像で、拒否理由は伝わらない（学習データに無いため）。
+
     bash scripts/sim/run_in_teleop_docker.sh scripts/collect/gpt_collect.py \\
         --model gpt-6-astra --episodes 3 --seed0 4000 --target cycle --out /workspace/out/gpt_trial/gpt-6-astra
 """
@@ -38,6 +42,8 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--task", default="Lerobot-So101-Teleop-Vials-To-Rack-DR")
 parser.add_argument("--server", default="http://localhost:8770")
 parser.add_argument("--model", required=True)
+parser.add_argument("--vlm_server", default=None,
+                    help="GPT の代わりに FT 済み VLM（policy_server.py の /act）に聞く。収集と同じ開始姿勢・実行部・判定で評価する")
 parser.add_argument("--target", default="cycle", choices=["cycle", *("near", "middle", "far")],
                     help="取るバイアルの位置。cycle = シード % 3 で near/middle/far を回す")
 parser.add_argument("--effort", default="low")
@@ -216,13 +222,34 @@ def ask(payload: dict) -> dict:
         waited, k = waited + d, k + 1
 
 
+def strict_in_hole(scene, v) -> bool:
+    """dm05_eval_sim.py の in_hole と同じ（立っていて、どれかの穴の中心から 1.5 cm 以内、底が穴の縁より 1 cm 下）。"""
+    if v.up_z <= 0.85:
+        return False
+    bottom = v.pos[2] - scene.vial_length / 2
+    return any(np.linalg.norm((v.pos - s)[:2]) < 0.015 and bottom < s[2] - 0.010 for s in scene.slots())
+
+
+def ask_vlm(task: str, recent: list, gripper_closed: bool) -> dict:
+    """FT 済み VLM に1手聞く。入力は学習データと同じ（Show-Harness v5 の文面、履歴、prepared_pair 済みの2画像）。"""
+    av, wr = be_ref.grab_frames()
+    r = urllib.request.Request(f"{args.vlm_server}/act", headers={"Content-Type": "application/json"},
+                               data=json.dumps({"task": task, "recent_moves": recent, "gripper_closed": gripper_closed,
+                                                "agentview_png_b64": png_b64(av), "wrist_png_b64": png_b64(wr)}).encode())
+    res = json.loads(urllib.request.urlopen(r, timeout=300).read())
+    return {"token": res["token"] if res["in_vocab"] else None, "raw": res["raw"],
+            "latency_s": res["latency_s"], "error": None}
+
+
 def main():
+    global be_ref
     os.makedirs(args.out, exist_ok=True)
     crit = yaml.safe_load(open(f"{REPO}/configs/motion_criteria.yaml"))
     p = OracleParams()
     env = make_env(args.task, seed=args.seed0, fixed_look=True, preplaced_vial=False, look="white_arm")
     be = So101WorkshopBackend(env, jaw_open_rad=p.jaw_open_rad)
     ex = So101AtomicExec(be, step_m=0.02)
+    be_ref = be
     scene = None
     log_path = os.path.join(args.out, "episodes.jsonl")
     for i in range(args.episodes):
@@ -261,7 +288,7 @@ def main():
                                    gripper=gripper_state(ex, be), tilt=tilt_state(be, p),
                                    height=f"{100 * (be.commanded_tcp()[2] - scene.table_top):.1f} cm",
                                    recent=", ".join(recent[:8]) or "none", last_result=last_result)
-            res = ask({"model": args.model, "effort": args.effort, "prompt": prompt, "episode": name,
+            res = ask_vlm(instruction, recent, ex.gripper_closed) if args.vlm_server else ask({"model": args.model, "effort": args.effort, "prompt": prompt, "episode": name,
                        "step": writer.step, "external_png_b64": png_b64(ext_raw), "wrist_png_b64": png_b64(wr_raw)})
             if res is None:
                 reason = "gpt_error"
@@ -312,9 +339,11 @@ def main():
             reason = "not_placed" if writer.step < args.max_tokens and calls < args.max_calls else "budget"
         valid = bool(success and reason is None)
         upright = [v.name for v in scene.vials() if v.up_z > 0.7]  # 記録用（人の判定の手がかり）
+        # 記録用（挙動は変えない）：評価（dm05_eval_sim.py）と同じ厳しい判定。立って穴に 1 cm 以上刺さった vial
+        in_hole = [v.name for v in scene.vials() if strict_in_hole(scene, v)]
         meta = {"instruction": instruction, "task": instruction, "task_text": instruction, "seed": seed,
                 "target_position": pos, "target_vial": target_vial, "upright_vials_at_end": upright,
-                "operator": f"gpt:{args.model}:{args.effort}", "embodiment": "so101",
+                "operator": f"vlm:{args.model}" if args.vlm_server else f"gpt:{args.model}:{args.effort}", "embodiment": "so101",
                 "sim": "Sim-to-Real-SO-101-Workshop v1.0", "env": args.task, "success": success,
                 "valid": valid, "reason": reason}
         writer.close(meta)
@@ -326,6 +355,7 @@ def main():
                 f.write(json.dumps(g, ensure_ascii=False) + "\n")
         row = {"episode": name, "seed": seed, "target_position": pos, "target_vial": target_vial,
                "target_upright_at_end": target_vial in upright, "instruction": instruction,
+               "vials_in_hole": in_hole, "target_in_hole": target_vial in in_hole,
                "model": args.model, "effort": args.effort,
                "success": success, "valid": valid, "reason": reason, "tokens": writer.step, "calls": calls,
                "refused": sum(1 for g in gpt_log if g["token"]) - writer.step,

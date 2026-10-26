@@ -50,6 +50,7 @@ def decide(model: str, effort: str, prompt: str, ext_png: bytes, wrist_png: byte
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--port", type=int, default=8770)
+    ap.add_argument("--host", default="0.0.0.0", help="待ち受けるアドレス（並列収集では各ワーカーの bridge のゲートウェイ）")
     ap.add_argument("--log", default="outputs/gpt_server.jsonl")
     args = ap.parse_args()
     log = Path(args.log)
@@ -77,8 +78,8 @@ def main():
             self.end_headers()
             self.wfile.write(body)
 
-    print(f"[GPT] :{args.port} で待ち受け（codex exec、読み取り専用）", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", args.port), Handler).serve_forever()
+    print(f"[GPT] {args.host}:{args.port} で待ち受け（codex exec、読み取り専用）", flush=True)
+    ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
 
 
 if __name__ == "__main__":
